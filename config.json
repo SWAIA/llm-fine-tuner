@@ -1,0 +1,40 @@
+{
+  "api_keys": {
+    "openai_api_key": "${OPENAI_API_KEY}",
+    "hugging_face_api_key": "${HUGGING_FACE_API_KEY}",
+    "notion_api_key": "${NOTION_API_KEY}"
+  },
+  "paths": {
+    "input_dir": "./data/input",
+    "output_file": "./data/output/enriched_data.json"
+  },
+  "defaults": {
+    "max_length": 512,
+    "min_length": 30,
+    "num_samples": 5
+  },
+  "context_options": {
+    "include_coref": true,
+    "include_events": true
+  },
+  "external_data_sources": {
+    "api_calls": [
+      {
+        "type": "openai",
+        "model": "text-davinci-003",
+        "max_tokens": 100,
+        "api_key_env_var": "OPENAI_API_KEY"
+      },
+      {
+        "type": "hugging_face",
+        "model": "bert-base-uncased",
+        "api_key_env_var": "HUGGING_FACE_API_KEY"
+      },
+      {
+        "type": "notion",
+        "database_id": "your_database_id_here",
+        "api_key_env_var": "NOTION_API_KEY"
+      }
+    ]
+  }
+}
