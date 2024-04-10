@@ -93,3 +93,42 @@ class ContextExtractor:
         if not context_options.get('include_events', True):
             context['extracted_events'] = []
 
+# Tests because it is more convienient to have them in the same file
+import unittest
+from unittest.mock import patch, MagicMock
+
+class TestContextExtractor(unittest.TestCase):
+    def setUp(self):
+        self.config = {'context_options': {'include_coref': True, 'include_events': True}}
+        self.context_extractor = ContextExtractor(self.config)
+        self.text = "This is a test text for context extraction."
+
+    @patch('data_enrichment_context.ContextExtractor.extract_named_entities')
+    @patch('data_enrichment_context.ContextExtractor.analyze_sentiment')
+    @patch('data_enrichment_context.ContextExtractor.resolve_coreferences')
+    @patch('data_enrichment_context.ContextExtractor.extract_events')
+    def test_extract_enhanced_context(self, mock_extract_events, mock_resolve_coreferences, mock_analyze_sentiment, mock_extract_named_entities):
+        mock_extract_named_entities.return_value = ['entity1', 'entity2']
+        mock_analyze_sentiment.return_value = 0.5
+        mock_resolve_coreferences.return_value = ['mention1', 'mention2']
+        mock_extract_events.return_value = ['event1', 'event2']
+
+        context = self.context_extractor.extract_enhanced_context(self.text)
+        self.assertIsInstance(context, dict)
+        self.assertIn('named_entities', context)
+        self.assertIn('sentiment_score', context)
+        self.assertIn('coreferent_mentions', context)
+        self.assertIn('extracted_events', context)
+
+        self.assertEqual(context['named_entities'], ['entity1', 'entity2'])
+        self.assertEqual(context['sentiment_score'], 0.5)
+        self.assertEqual(context['coreferent_mentions'], ['mention1', 'mention2'])
+        self.assertEqual(context['extracted_events'], ['event1', 'event2'])
+
+        mock_extract_named_entities.assert_called_once_with(self.text)
+        mock_analyze_sentiment.assert_called_once_with(self.text)
+        mock_resolve_coreferences.assert_called_once_with(self.text)
+        mock_extract_events.assert_called_once_with(self.text)
+
+if __name__ == '__main__':
+    unittest.main()

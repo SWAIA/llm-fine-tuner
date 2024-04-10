@@ -8,8 +8,11 @@ class DataEnrichmentService:
             raise ValueError("Config must be a dictionary.")
         self.config = config
         self.external_data: Dict[str, Dict] = {}
+        self.cache = {}
 
-    def integrate_external_data(self, metadata: Dict[str, Dict], context: Dict[str, Dict]) -> Dict[str, Dict]:
+    integrate_external_data = lambda self, metadata: Dict[str, Dict], context: Dict[str, Dict]: self._integrate_external_data(metadata, context)
+
+    def _integrate_external_data(self, metadata: Dict[str, Dict], context: Dict[str, Dict]) -> Dict[str, Dict]:
         if not isinstance(metadata, dict) or not isinstance(context, dict): 
             raise TypeError("Metadata and context must be dictionaries.")
         self._extract_and_simulate_data(metadata, context)
@@ -44,9 +47,14 @@ class DataEnrichmentService:
 
     # Fetches data from generic APIs
     def _fetch_generic_api_data(self, source: Dict[str, Dict]) -> Dict[str, Dict]:
+        cache_key = source['url'] + str(source.get('params', {}))
+        if cache_key in self.cache:
+            return self.cache[cache_key]
         try:
             response = requests.get(source['url'], params=source.get('params', {}))
-            return response.json() if response.ok else logging.warning(f"Failed to fetch data from {source['url']}, status code: {response.status_code}") or {}
+            result = response.json() if response.ok else logging.warning(f"Failed to fetch data from {source['url']}, status code: {response.status_code}") or {}
+            self.cache[cache_key] = result
+            return result
         except Exception as e: 
             logging.error(f"Error fetching data from {source['url']}: {e}")
             return {}
@@ -89,3 +97,61 @@ class DataEnrichmentService:
         except Exception as e:
             logging.error(f"Error making API request to {url}: {e}")
             return {}
+
+# Tests because it is more convienient to have them in the same file
+import unittest
+from unittest.mock import patch, MagicMock
+
+class TestDataEnrichmentExternal(unittest.TestCase):
+    def setUp(self):
+        self.config = {'api_keys': {'google_api_key': 'test_google_api_key', 'openai_api_key': 'test_openai_api_key', 'hugging_face_api_key': 'test_hugging_face_api_key'}, 'defaults': {'cx': 'test_cx', 'query': 'test_query', 'model': 'text-davinci-003', 'question': 'test_question', 'documents': [], 'examples_context': 'test_examples_context', 'examples': [], 'max_tokens': 100, 'stop': ["\n", "\n\n"], 'inputs': 'test_inputs', 'parameters': {}, 'options': {}}}
+        self.data_enrichment_service = DataEnrichmentService(self.config)
+
+    @patch('data_enrichment_external.requests.get')
+    def test_fetch_data_from_google(self, mock_get):
+        mock_response = MagicMock()
+        mock_response.json.return_value = {'items': ['test_item']}
+        mock_response.status_code = 200
+        mock_get.return_value = mock_response
+
+        source = {'api_key': 'override_key', 'cx': 'override_cx', 'query': 'override_query'}
+        result = self.data_enrichment_service._fetch_data_from_google(source)
+        self.assertEqual(result, {'items': ['test_item']})
+
+        mock_get.assert_called_once_with("https://www.googleapis.com/customsearch/v1", params={"key": "override_key", "cx": "override_cx", "q": "override_query"})
+
+    @patch('data_enrichment_external.requests.post')
+    def test_fetch_data_from_openai(self, mock_post):
+        mock_response = MagicMock()
+        mock_response.json.return_value = {'answers': ['test_answer']}
+        mock_response.status_code = 200
+        mock_post.return_value = mock_response
+
+        source = {'api_key': 'override_key', 'inputs': 'override_inputs', 'parameters': {'temperature': 0.7}, 'options': {'wait_for_model': True}}
+        result = self.data_enrichment_service._fetch_data_from_openai(source)
+        self.assertEqual(result, {'answers': ['test_answer']})
+
+        expected_payload = {
+            "inputs": "override_inputs",
+            "parameters": {"temperature": 0.7},
+            "options": {"wait_for_model": True}
+        }
+        mock_post.assert_called_once_with(
+            "https://api.openai.com/v1/completions",
+            headers={"Authorization": "Bearer override_key"},
+            json=expected_payload
+        )
+
+    @patch('data_enrichment_external.requests.get')
+    def test_fetch_generic_api_data(self, mock_get):
+        mock_response = MagicMock()
+        mock_response.json.return_value = {'data': 'test_data'}
+        mock_response.status_code = 200
+        mock_get.return_value = mock_response
+        source = {'url': 'https://genericapi.com/data', 'params': {'key': 'generic_key', 'query': 'generic_query'}}
+        result = self.data_enrichment_service._fetch_generic_api_data(source)
+        self.assertEqual(result, {'data': 'test_data'})
+
+        mock_get.assert_called_once_with(
+            "https://genericapi.com/data",
+        
