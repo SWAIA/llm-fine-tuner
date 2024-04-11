@@ -1,2 +1,3 @@
-from .utils import Utils
-from .app import Application
+from utils import Utilities as Utils
+from app import Application
+

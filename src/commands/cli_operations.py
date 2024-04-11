@@ -1,4 +1,4 @@
-from ..utils import Utilities as Utils
+from utils import Utilities as Utils
 
 class CLIOperations:
     def __init__(self):

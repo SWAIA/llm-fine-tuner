@@ -1,7 +1,8 @@
 import argparse
 import asyncio
 from typing import Sequence, Optional
-from ..processing.processor import DataProcessor
+from processing.processor import DataProcessor
+
 
 class CommandParser:
     def __init__(self, config: dict):
@@ -16,7 +17,7 @@ class CommandParser:
         }
 
     async def parse_args(self, args: Optional[Sequence[str]] = None) -> argparse.Namespace:
-        parsed_args = self.parser.parse_args(args=args)
+        parsed_args = await self.parser.parse_args(args=args)  # Fixed the missing 'await' keyword
         await self.execute_command(parsed_args)
         return parsed_args
 

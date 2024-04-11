@@ -1,14 +1,9 @@
 {
   "globalSettings": {
     "base_url": "https://127.0.0.1:8000",
-    "apiKeys": {
-      "OPENAI": "${OPENAI_API_KEY}",
-      "HUGGING_FACE": "${HUGGING_FACE_API_KEY}",
-      "NOTION": "${NOTION_API_KEY}"
-    },
     "filePaths": {
       "inputDir": "./data/input",
-      "outputFile": "./data/output/global_enriched_data.json"
+      "outputFile": "./data/output/global_enriched_data.jsonl"
     },
     "processingDefaults": {
       "maxTextLength": 512,
@@ -23,8 +18,7 @@
       {
         "name": "OpenAI",
         "model": "text-davinci-003",
-        "maxTokens": 100,
-        "apiKey": "OPENAI_API_KEY"
+        "maxTokens": 100
       },
       {
         "name": "HuggingFace",
@@ -32,13 +26,11 @@
           {"identifier": "bert-base-uncased"},
           {"identifier": "gpt-2"},
           {"identifier": "roberta-base"}
-        ],
-        "apiKey": "HUGGING_FACE_API_KEY"
+        ]
       },
       {
         "name": "Notion",
-        "databaseId": "placeholder_database_id",
-        "apiKey": "NOTION_API_KEY"
+        "databaseId": "placeholder_database_id"
       }
     ],
     "projectMetadata": {

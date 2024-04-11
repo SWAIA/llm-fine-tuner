@@ -2,16 +2,16 @@ import asyncio
 import sys
 from typing import Dict, Optional
 
-from .utils import Utils
-from .commands.command_parser import CommandParser
-from .processing.processor import DataProcessor
+from utils import _PrivateUtils
+from commands.command_parser import CommandParser
+from processing.processor import DataProcessor
 
 
 class Application:
     def __init__(self, config_overrides: Optional[Dict[str, str]] = None):
         self.config_path = 'config.json'
-        self.utils = Utils.get_instance(self.config_path)
-        self.config = config_overrides if config_overrides else self.utils.read_config(self.config_path)
+        self.utils = _PrivateUtils.get_instance(self.config_path)
+        self.config = config_overrides if config_overrides else self.utils.load_config(self.config_path)
         self.waiting = False
         asyncio.create_task(self._setupAsync())
 

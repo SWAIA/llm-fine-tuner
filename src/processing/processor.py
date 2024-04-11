@@ -1,11 +1,11 @@
 import asyncio
 from typing import Dict, Any
-from ..utils import UtilityFunctions as Utils
+from utils import Utilities as Utils
 
-from src.processing.metadata_extractor import MetadataExtractor
-from src.processing.context_extractor import ContextExtractor
-from src.processing.data_processor import DataProcessor
-from src.processing.file_processor import FileProcessor
+from processing.metadata_extractor import MetadataExtractor
+from processing.context_extractor import ContextExtractor
+from processing.data_processor import DataProcessor
+from processing.file_processor import FileProcessor
 
 class DataProcessor:
 

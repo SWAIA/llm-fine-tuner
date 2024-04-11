@@ -1,5 +1,5 @@
 from typing import Dict
-from ..utils import Utils
+from utils import Utilities as Utils
 
 class DataProcessor:
     

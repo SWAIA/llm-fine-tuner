@@ -1,5 +1,5 @@
 from typing import Dict, List
-from ..utils import Utils
+from utils import Utilities as Utils
 from requests.exceptions import RequestException
 from zipfile import ZipFile
 import os

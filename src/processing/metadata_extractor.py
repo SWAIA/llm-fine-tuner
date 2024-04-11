@@ -3,7 +3,7 @@ import re
 from datetime import datetime
 from bs4 import BeautifulSoup
 from typing import Dict, List
-from ..utils import Utils
+from utils import Utilities as Utils
 
 class MetadataExtractor:
 

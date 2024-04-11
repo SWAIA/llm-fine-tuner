@@ -23,6 +23,7 @@ setuptools.setup(
         'transformers',
         'huggingface-hub',
         'python-logging',
+        'requests'
     ],
     entry_points={
         'console_scripts': [

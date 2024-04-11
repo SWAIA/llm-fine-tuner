@@ -1,6 +1,6 @@
 from typing import Dict, List
 from transformers import AutoTokenizer, pipeline, set_seed
-from ..utils import Utils
+from utils import Utilities as Utils
 
 class ContextExtractor:
 

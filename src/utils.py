@@ -2,69 +2,145 @@ from typing import List, Dict, Optional
 import os
 import re
 import json
-import logging
 import subprocess
 import requests
 from transformers import AutoTokenizer, AutoModelForQuestionAnswering, pipeline, set_seed
 
-# Singleton pattern for Utilities class
-class _PrivateUtils:
-    __utils_instance = None
+import logging
+import asyncio
+import aiofiles
+import aiohttp
 
-    @classmethod
-    def get_instance(cls, config_path: str = 'config.json') -> 'Utilities':
-        if cls.__utils_instance is None:
-            cls.__utils_instance = Utilities(config_path)
-        return cls.__utils_instance
+class LoggerService:
+    """
+    A singleton class for asynchronous thread-safe logging.
+    """
+    _instance = None
+    _lock = asyncio.Lock()
 
-# Updated utility class with modern Python practices
-class Utilities:
+    def __new__(cls, name: str, level: int = logging.ERROR):
+        if cls._instance is None:
+            cls._instance = super(LoggerService, cls).__new__(cls)
+            cls._instance._setup(name, level)
+        return cls._instance
 
-    def __init__(self, config_path: str = 'config.json') -> None:
-        self.config = self.load_config(config_path)
-        self.models = self.init_models(self.config)
-        self.setup_logger()
+    def _setup(self, name: str, level: int):
+        self.logger = self._initialize_logger(name, level)
+        self.lock = self._lock
 
-    def setup_logger(self, level: int = logging.ERROR) -> None:
+    async def log(self, level: str, message: str, *args, **kwargs) -> None:
+        """
+        Asynchronously logs a message with the given level.
+        """
+        async with self.lock:
+            log_method = getattr(self.logger, level)
+            log_method(message, *args, **kwargs)
+
+    async def debug(self, message: str, data: Dict[str, any]) -> None:
+        await self.log('debug', message, data, exc_info=True)
+
+    async def warning(self, message: str) -> None:
+        await self.log('warning', message)
+
+    async def critical(self, message: str) -> None:
+        await self.log('critical', message)
+
+    async def exception(self, error: Exception) -> None:
+        await self.log('exception', "An exception occurred", exc_info=error)
+
+    async def error(self, message: str) -> None:
+        await self.log('error', message)
+
+    async def info(self, message: str) -> None:
+        await self.log('info', message)
+
+    async def error_with_exception(self, error: Exception) -> None:
+        await self.log('error', f"Encountered an error: {error}", exc_info=True)
+
+    def _initialize_logger(self, name: str, level: int) -> logging.Logger:
+        """
+        Initializes and returns a logger with the specified name and level.
+        """
         logging.basicConfig(level=level, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
-        logger = logging.getLogger(__name__)
-        logger.addHandler(logging.StreamHandler())
-        logger.info("Logger initialized.")
+        return logging.getLogger(name)
 
-    @staticmethod
-    def send_request(url: str, method: str = 'GET', headers: Optional[Dict[str, str]] = None, params: Optional[Dict[str, str]] = None, body: Optional[Dict[str, str]] = None) -> Dict:
+class ConfigManager:
+    """
+    Manages application configuration.
+    """
+    def __init__(self, config_path: str = 'config.json') -> None:
+        self.config_path = config_path
+        self.config = None
+
+    async def load_config(self) -> Dict:
+        """
+        Asynchronously loads the configuration from the specified path.
+        """
+        async with aiofiles.open(self.config_path, mode='r') as f:
+            self.config = json.loads(await f.read())
+        return self.config
+
+class RequestManager:
+    """
+    Handles HTTP requests asynchronously.
+    """
+    def __init__(self, logger: LoggerService) -> None:
+        self.logger = logger
+
+    async def send_request(self, url: str, method: str = 'GET', headers: Optional[Dict[str, str]] = None, params: Optional[Dict[str, str]] = None, body: Optional[Dict[str, str]] = None) -> Dict:
+        """
+        Asynchronously sends an HTTP request and returns the response.
+        """
         try:
-            response = requests.request(method, url, headers=headers or {}, params=params or {}, json=body or {})
-            response.raise_for_status()
-            return response.json()
-        except requests.RequestException as e:
-            logging.error(f"Request to {url} failed: {e}")
+            async with aiohttp.ClientSession() as session:
+                async with session.request(method, url, headers=headers or {}, params=params or {}, json=body or {}) as response:
+                    response.raise_for_status()
+                    return await response.json()
+        except aiohttp.ClientError as e:
+            await self.logger.error(f"Request to {url} failed: {e}")
             return {}
 
-    def clean_text(self, text: str, max_length: int = 512) -> str:
+class TextProcessor:
+    """
+    Provides text processing utilities.
+    """
+    @staticmethod
+    def clean_text(text: str, max_length: int = 512) -> str:
+        """
+        Cleans and truncates the text to a specified maximum length.
+        """
         text = re.sub(r'\s+', ' ', re.sub(r'[^a-zA-Z0-9\s]', '', text))
         return text[:max_length]
 
-    def run_command(self, command: str) -> None:
-        subprocess.run(command, shell=True, check=True, capture_output=True)
+class ModelManager:
+    """
+    Manages machine learning models.
+    """
+    def __init__(self, logger: LoggerService) -> None:
+        self.logger = logger
+        self.models = {}
 
-    def init_models(self, config: Dict) -> Dict:
+    def init_models(self, config: Dict) -> None:
+        """
+        Initializes machine learning models based on the provided configuration.
+        """
         set_seed(42)
-        models = {}
         for model_config in config.get('model_configs', []):
             name, task = model_config['name'], model_config['task']
             try:
                 model = AutoModelForQuestionAnswering.from_pretrained(name)
                 tokenizer = AutoTokenizer.from_pretrained(name)
-                models[task] = pipeline(task, model=model, tokenizer=tokenizer)
+                self.models[task] = pipeline(task, model=model, tokenizer=tokenizer)
             except Exception as e:
-                logging.error(f"Failed to load model {name} for task {task}: {e}")
-        return models
+                asyncio.run(self.logger.error(f"Failed to load model {name} for task {task}: {e}"))
 
-    def find_files(self, directory: str) -> List[str]:
-        return [os.path.join(root, name) for root, _, names in os.walk(directory) for name in names if not name.startswith('.')]
-
+class FileManager:
+    """
+    Provides file management utilities.
+    """
     @staticmethod
-    def load_config(file_path: str) -> Dict:
-        with open(file_path) as f:
-            return json.load(f)
+    def find_files(directory: str) -> List[str]:
+        """
+        Finds and returns a list of files in the specified directory.
+        """
+        return [os.path.join(root, name) for root, _, names in os.walk(directory) for name in names if not name.startswith('.')]
