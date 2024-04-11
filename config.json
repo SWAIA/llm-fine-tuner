@@ -1,40 +1,55 @@
 {
-  "api_keys": {
-    "openai_api_key": "${OPENAI_API_KEY}",
-    "hugging_face_api_key": "${HUGGING_FACE_API_KEY}",
-    "notion_api_key": "${NOTION_API_KEY}"
-  },
-  "paths": {
-    "input_dir": "./data/input",
-    "output_file": "./data/output/enriched_data.json"
-  },
-  "defaults": {
-    "max_length": 512,
-    "min_length": 30,
-    "num_samples": 5
-  },
-  "context_options": {
-    "include_coref": true,
-    "include_events": true
-  },
-  "external_data_sources": {
-    "api_calls": [
+  "globalSettings": {
+    "base_url": "https://127.0.0.1:8000",
+    "apiKeys": {
+      "OPENAI": "${OPENAI_API_KEY}",
+      "HUGGING_FACE": "${HUGGING_FACE_API_KEY}",
+      "NOTION": "${NOTION_API_KEY}"
+    },
+    "filePaths": {
+      "inputDir": "./data/input",
+      "outputFile": "./data/output/global_enriched_data.json"
+    },
+    "processingDefaults": {
+      "maxTextLength": 512,
+      "minTextLength": 30,
+      "samplesPerRequest": 5
+    },
+    "featureToggles": {
+      "coreferenceResolutionEnabled": false,
+      "eventDetectionEnabled": false
+    },
+    "serviceConfigurations": [
       {
-        "type": "openai",
+        "name": "OpenAI",
         "model": "text-davinci-003",
-        "max_tokens": 100,
-        "api_key_env_var": "OPENAI_API_KEY"
+        "maxTokens": 100,
+        "apiKey": "OPENAI_API_KEY"
       },
       {
-        "type": "hugging_face",
-        "model": "bert-base-uncased",
-        "api_key_env_var": "HUGGING_FACE_API_KEY"
+        "name": "HuggingFace",
+        "models": [
+          {"identifier": "bert-base-uncased"},
+          {"identifier": "gpt-2"},
+          {"identifier": "roberta-base"}
+        ],
+        "apiKey": "HUGGING_FACE_API_KEY"
       },
       {
-        "type": "notion",
-        "database_id": "your_database_id_here",
-        "api_key_env_var": "NOTION_API_KEY"
+        "name": "Notion",
+        "databaseId": "placeholder_database_id",
+        "apiKey": "NOTION_API_KEY"
       }
-    ]
+    ],
+    "projectMetadata": {
+      "tags": ["data_preparation", "LLM", "utility"],
+      "website": "https://example.com/",
+      "details": {
+        "name": "Large Language Model Data Preparation Utility",
+        "version": "2.0.0",
+        "licenseType": "Apache-2.0",
+        "sourceCode": "https://github.com/your-repository/large-language-model-data-prep.git"
+      }
+    }
   }
 }

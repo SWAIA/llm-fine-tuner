@@ -1,6 +1,0 @@
-beautifulsoup4
-numpy
-requests
-transformers
-python-dotenv
-requests
