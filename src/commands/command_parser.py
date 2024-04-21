@@ -1,13 +1,13 @@
 import argparse
-import asyncio
 from typing import Sequence, Optional
-from processing.processor import DataProcessor
-
+from src.processing.processor import DataProcessor
+from src.utils import LoggerService
 
 class CommandParser:
     def __init__(self, config: dict):
         self.config = config
         self.processor = DataProcessor(config)
+        self.logger = LoggerService.get_instance()
         self.commands = {
             'process': self.processor.process_files,
             'run_data_preparation': self.processor.run_data_preparation,
@@ -17,7 +17,9 @@ class CommandParser:
         }
 
     async def parse_args(self, args: Optional[Sequence[str]] = None) -> argparse.Namespace:
-        parsed_args = await self.parser.parse_args(args=args)  # Fixed the missing 'await' keyword
+        parser = argparse.ArgumentParser(description="Command parser for data processing tasks")
+        parser.add_argument('command', choices=self.commands.keys(), help='The command to execute')
+        parsed_args = parser.parse_args(args=args)
         await self.execute_command(parsed_args)
         return parsed_args
 
@@ -25,9 +27,9 @@ class CommandParser:
         command = parsed_args.command
         try:
             if command in self.commands:
-                await self.commands[command](parsed_args)
+                await self.commands[command]()
         except Exception as e:
-            print(f"An error occurred during command execution: {e}")
+            self.logger.error(f"An error occurred during command execution: {e}")
         finally:
             await self.cleanup()
 

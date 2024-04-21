@@ -1,0 +1,371 @@
+
+
+public.profile (
+  id uuid primary key,
+  username varchar(255) not null unique,
+  email varchar(255) not null unique,
+  profile_image text,
+  created_at timestamp with time zone default current_timestamp
+  updated_at timestamp with time zone default current_timestamp,
+)
+
+public.artwork (
+  id uuid primary key,
+  title text,
+  subtitle text,
+  artist_id uuid references artist (id) on delete cascade,
+  file_id uuid references file (id) on delete cascade,
+  region_id uuid references region (id),
+  style text,
+  description text,
+  price numeric,
+  quantity integer check (quantity >= 0),
+  availability varchar(20) check (
+    availability in ('Available', 'Not Available', 'Sold Out')
+  ),
+  shipping_info text,
+  created_at timestamp with time zone default current_timestamp
+  updated_at timestamp with time zone default current_timestamp
+  )
+
+public.artist (
+  id uuid primary key,
+  user_profile_id uuid references profile(id) on delete cascade,
+  business_name varchar(255) unique,
+  first_name varchar(255),
+  last_name varchar(255),
+  bio text,  -- added bio as per recommendation
+  website varchar(255),
+  phone varchar(20) check (phone ~ '^[0-9]{10,15}$'), -- simple phone validation
+  street_address varchar(255),
+  city varchar(255),
+  state_province varchar(100),
+  zip_code varchar(20),
+  profile_image text,
+  avatar text,
+  store_name varchar(255),
+  store_description text,
+  store_banner text
+)
+
+public.collection (
+  id UUID NOT NULL PRIMARY KEY,
+  user_profile_id UUID REFERENCES public.profile(id) ON DELETE CASCADE, -- Reference to the user's profile
+  title TEXT NULL,
+  subtitle TEXT NULL,
+  description TEXT NULL,
+  image TEXT NULL,
+  status VARCHAR(10) NOT NULL CHECK (status IN ('draft', 'public', 'private')) -- Status check constraint
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+) TABLESPACE pg_default;
+
+public.collection_item (
+  id UUID NOT NULL PRIMARY KEY,
+  collection_id UUID NOT NULL REFERENCES public.collection(id) ON DELETE CASCADE, -- Reference to the collection
+  item_type TEXT[] NOT NULL,
+  item_id UUID NOT NULL,
+  CONSTRAINT collection_item_item_type_item_id_key UNIQUE (item_type, item_id)
+) TABLESPACE pg_default;
+
+
+-- AUDIT LOG
+public.audit_log (
+  id uuid primary key,
+  table_name varchar(255) not null,
+  record_id uuid not null,
+  action varchar(50),
+  modified_at timestamp with time zone default current_timestamp,
+  modified_by uuid references profile(id)
+)
+
+-- BUCKETS
+public.storage_bucket (
+  id uuid primary key,
+  artist_id uuid references artist(id),
+  name text not null,
+  public boolean default false
+)
+
+-- FILES
+public.file (
+  id uuid primary key,
+  bucket_id uuid references storage_bucket(id) on delete cascade,
+  name text not null,
+  path text not null,
+  type text not null,
+  size BIGINT,
+  created_at timestamp with time zone default current_timestamp
+
+)
+
+-- REGIonS
+public.region (
+  id uuid primary key,
+  name text unique,
+  description text
+)
+
+-- NATIonS
+public.nations (
+  id uuid primary key,
+  name text unique,
+  region_id uuid references region(id),
+  description text
+)
+
+-- TRIBES
+public.tribe (
+  id uuid primary key,
+  name text,
+  nation_id uuid references nations(id),
+  location text,
+  languages text,
+  government text,
+  historical_territory text,
+  current_reservations text
+)
+
+-- ARTIST AFFILIATIonS
+public.artist_affiliation (
+  artist_id uuid references artist(id),
+  tribe_id uuid references tribe(id),
+  primary key (artist_id, tribe_id)
+)
+
+-- CATEGORIES
+public.category (
+  id uuid primary key,
+  title text,
+  subtitle text,
+  description text
+)
+
+-- CLASSIFICATIonS
+public.classification (
+  id uuid primary key,
+  name text,
+  description text
+)
+
+-- COLLECTIonS
+public.collection (
+  id uuid primary key,
+  title text,
+  subtitle text,
+  description text,
+  image text
+)
+
+-- TAGS
+public.tag (
+  id uuid primary key,
+  name text unique
+)
+
+-- COMMENTS with Soft delete
+public.comment (
+  id uuid primary key,
+  user_id uuid references profile(id) on delete cascade,
+  artwork_id uuid references artwork(id) on delete cascade,
+  content text not null -- added not null constraint
+ with time zone default current_timestamp,
+  timestamp with time zone default current_timestamp  -- Added soft delete
+)
+
+-- REVIEWS with Soft delete
+public.review (
+  id uuid primary key,
+  user_id uuid references profile(id) on delete cascade,
+  artwork_id uuid references artwork(id) on delete cascade,
+  rating integer check (rating >= 0 and rating <= 5),
+  comment text not null -- added not null constraint
+ with time zone default current_timestamp,
+  timestamp with time zone default current_timestamp  -- Added soft delete
+)
+
+-- ORDER
+public.orders (
+  id uuid primary key,
+  user_id uuid references profile(id) on delete cascade,
+  stripe_payment_id text,
+  order_status varchar(20) check (
+    order_status in ('Pending', 'Shipped', 'Delivered', 'Cancelled')
+  ),
+  created_at timestamp with time zone default current_timestamp
+
+updated_at timestamp with time zone default current_timestamp,
+  )
+
+-- ORDER ITEMS
+public.order_item (
+  order_id uuid references orders(id) on delete cascade, -- changed from order to orders
+  artwork_id uuid references artwork(id) on delete cascade,
+  quantity integer,
+  price numeric,
+  primary key (order_id, artwork_id)
+)
+
+-- ARTWORK CATEGORIES
+public.artwork_category (
+  artwork_id uuid references artwork(id) on delete cascade,
+  category_id uuid references category(id) on delete cascade,
+  primary key (artwork_id, category_id)
+)
+
+-- ARTWORK CLASSIFICATIonS
+public.artwork_classification (
+  artwork_id uuid references artwork(id) on delete cascade,
+  classification_id uuid references classification(id) on delete cascade,
+  primary key (artwork_id, classification_id)
+)
+
+-- ARTWORK COLLECTIonS
+public.artwork_collection (
+  artwork_id uuid references artwork(id) on delete cascade,
+  collection_id uuid references collection(id) on delete cascade,
+  primary key (artwork_id, collection_id)
+)
+
+-- ARTWORK TAGS
+public.artwork_tag (
+  artwork_id uuid references artwork(id) on delete cascade,
+  tag_id uuid references tag(id) on delete cascade,
+  primary key (artwork_id, tag_id)
+)
+
+-- STRIPE CUSTOMERS
+public.stripe_customer (
+  id uuid primary key,
+  user_id uuid references profile(id) on delete cascade, -- changed from user to users
+  customer_id_on_stripe text not null
+)
+
+-- STRIPE CHARGES
+public.stripe_charge (
+  id uuid primary key,
+  stripe_customer_id uuid references stripe_customer(id) on delete cascade,
+  charge_id_on_stripe text not null,
+  order_id uuid references orders(id), -- Added this field
+  amount numeric,
+  currency text,
+  status text,
+  created_at timestamp with time zone default current_timestamp
+
+)
+
+-- MESSAGES with Soft delete
+public.message (
+  id uuid primary key,
+  sender_id uuid references profile(id) on delete cascade,
+  receiver_id uuid references profile(id) on delete cascade,
+  content text not null -- added not null constraint
+ with time zone default current_timestamp,
+  timestamp with time zone default current_timestamp  -- Added soft delete
+)
+
+-- MESSAGE REPLIES
+public.message_reply (
+  id uuid primary key,
+  message_id uuid references message(id) on delete cascade,
+  sender_id uuid references profile(id) on delete cascade,
+  content text not null -- added not null constraint
+ with time zone default current_timestamp,
+)
+
+index idx_fts_curated_collection on curated_collection using gin(to_tsvector('english', title || ' ' || subtitle || ' ' || description))
+
+-- MATERIAL & TECHNIQUE
+public.material_technique (
+  id uuid primary key,
+  name text unique,
+  description text
+)
+
+public.notification (
+    id uuid primary key,
+    user_id uuid references profile(id) on delete cascade,
+    notification varchar(20) check (
+      notification in ('message', 'comment', 'review', 'order_status', 'promotion')
+    ),
+    content text,
+    is_read boolean default false,
+    timestamp timestamp with time zone default current_timestamp,
+    )
+
+-- ARTIST MATERIAL & TECHNIQUE
+public.artist_material_technique (
+  artist_id uuid references artist(id),
+  material_technique_id uuid references material_technique(id),
+  primary key (artist_id, material_technique_id)
+)
+
+-- CURATED COLLECTIonS
+public.curated_collection (
+  id uuid primary key,
+  title text,
+  subtitle text,
+  description text,
+  image text
+)
+
+-- ARTWORK CURATED COLLECTIonS
+public.artwork_curated_collection (
+  artwork_id uuid references artwork(id),
+  curated_collection_id uuid references curated_collection(id),
+  primary key (artwork_id, curated_collection_id)
+)
+
+-- PAYMENTS
+public.payment (
+  id uuid primary key,
+  order_id uuid references orders(id),
+  user_id uuid references profile(id),
+  payment_method text,
+  orders_id text,
+  amount numeric
+)
+
+-- WISHLIST
+public.wishlist (
+  id uuid primary key,
+  user_id uuid references profile(id)
+)
+
+-- WISHLIST ITEMS
+public.wishlist_item (
+  wishlist_id uuid references wishlist(id),
+  artwork_id uuid references artwork(id),
+  primary key (wishlist_id, artwork_id)
+)
+
+-- GIFT CARDS
+public.gift_card (
+  id uuid primary key,
+  user_id uuid references profile(id),
+  recipient_email text,
+  amount numeric,
+  code text unique,
+  expiration_date date,
+  status text
+)
+
+-- PROMOTIonS & DISCOUNTS
+public.promotion (
+  id uuid primary key,
+  code text unique,
+  discount_amount numeric,
+  discount_percentage integer check (discount_percentage between 0 and 100),
+  start_date date,
+  end_date date,
+  status text
+)
+
+-- USER PROMOTIonS
+public.user_promotion (
+  user_id uuid references profile(id),
+  promotion_id uuid references promotion(id),
+  date_used timestamp with time zone default current_timestamp,
+  is_successful boolean default false, -- Added this field
+  primary key (user_id, promotion_id)
+)

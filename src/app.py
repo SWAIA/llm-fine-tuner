@@ -2,67 +2,53 @@ import asyncio
 import sys
 from typing import Dict, Optional
 
-from utils import _PrivateUtils
-from commands.command_parser import CommandParser
-from processing.processor import DataProcessor
-
-
 class Application:
     def __init__(self, config_overrides: Optional[Dict[str, str]] = None):
-        self.config_path = 'config.json'
-        self.utils = _PrivateUtils.get_instance(self.config_path)
-        self.config = config_overrides if config_overrides else self.utils.load_config(self.config_path)
+        self.config_path = './../config.json'
+        self.logger = None
+        self.config_manager = None
+        self.utils = None
+        self.config = config_overrides  # Directly use the provided overrides
         self.waiting = False
-        asyncio.create_task(self._setupAsync())
 
-    async def _setupAsync(self):
-        await asyncio.gather(
-            asyncio.to_thread(self.utils.setup_logging),
-            self._initializeProcessorAsync()
-        )
-        self.utils.log_info("Application initialized.")
+    async def async_init(self):
+        from utils import LoggerService, ConfigManager  # Imports moved here to avoid circular dependency
+        self.logger = self.logger or await LoggerService.get_instance("ApplicationLogger", (30, 40))
+        self.config_manager = self.config_manager or ConfigManager(self.config_path)
+        self.config = self.config or await self.config_manager.load_config()
+        asyncio.create_task(self._setup_async())
 
-    async def _initializeProcessorAsync(self):
-        self.processor = DataProcessor(self.config, self.config['filePaths']['outputFile'])
+    async def _setup_async(self):
+        await self.logger.log("info", "Application initialized.")
 
     async def run(self):
-        self.utils.log_info("Starting data processing...")
-        await self.processor.process_files(self.config['filePaths']['inputDir'])
-    
-    async def runCli(self):
-        args = CommandParser(self.config).parse_args()
-        command = {
-            'process': lambda: asyncio.create_task(self.processor.process_files(args.input_dir)),
-            'run_data_preparation': self.processor.run_data_preparation,
-            'validate_output': self.processor.validate_output,
-            'upload_output': self.processor.upload_output,
-            'run_all': self.processor.run_all
-        }.get(args.command)
+        from commands.command_parser import CommandParser
+        command_parser = CommandParser(self.config)
+        await command_parser.parse_args()
 
-        await command() if command else self.utils.log_error(f"Invalid command: {args.command}")
+    async def _check_waiting_state(self):
+        if self.waiting:
+            breakpoint()
+            await self.logger.log("info", "Application is in pause state. Please resume to proceed.")
 
-    def runTests(self):
-        self.utils.log_info("All tests passed successfully.")
+    async def process_and_log_context(self, _: str):
+        # This method seems to be unrelated to the current refactoring but remains for potential future use.
+        pass
+
+    @staticmethod
+    async def _log_application_failure(error):
+        print(f"Application failed to start: {error}")
 
     @classmethod
     async def main(cls):
         try:
             config_overrides = sys.argv[1] if len(sys.argv) > 1 else None
             app = cls(config_overrides)
-            await app._checkWaitingState()
-            await app._executeCommandBasedOnConfig(config_overrides)
+            await app.async_init()  # Initialize async parts
+            await app._check_waiting_state()
+            await app.run()
         except Exception as e:
-            cls._logApplicationFailure(e)
+            await cls._log_application_failure(e)
 
-    async def _checkWaitingState(self):
-        if self.waiting:
-            breakpoint()
-            self.utils.log_info("Application is in pause state. Please resume to proceed.")
-
-    async def _executeCommandBasedOnConfig(self, config_overrides):
-        await self.runCli() if config_overrides else await self.run()
-
-    @staticmethod
-    def _logApplicationFailure(error):
-        print(f"Application failed to start: {error}")
-
+if __name__ == "__main__":
+    asyncio.run(Application.main())

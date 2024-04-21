@@ -22,12 +22,24 @@ setuptools.setup(
         'beautifulsoup4',
         'transformers',
         'huggingface-hub',
-        'python-logging',
-        'requests'
+        'requests',
+        'aiofiles',
+        'aiohttp',
+        'asyncio'
     ],
     entry_points={
         'console_scripts': [
-            'data-parser=src.__main__:main',
+            # Bash command example: `start-data-parser`
+            # Description: Initializes the data parser application.
+            'start-data-parser=src.__main__:main',
+            
+            # Bash command example: `run-data-parser`
+            # Description: Executes the data parser application, processing input data based on provided configurations.
+            'run-data-parser=src.__main__:main',
+            
+            # Bash command example: `data-parser-cli`
+            # Description: Starts the CLI for user commands, allowing interaction with the data parser application.
+            'data-parser-cli=src.__main__:main'
         ],
-    },
+    }
 )

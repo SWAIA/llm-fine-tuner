@@ -2,8 +2,8 @@
   "globalSettings": {
     "base_url": "https://127.0.0.1:8000",
     "filePaths": {
-      "inputDir": "./data/input",
-      "outputFile": "./data/output/global_enriched_data.jsonl"
+      "inputDir": "./mock/input",
+      "outputFile": "./mock/output/global_enriched_data.jsonl"
     },
     "processingDefaults": {
       "maxTextLength": 512,
@@ -14,11 +14,40 @@
       "coreferenceResolutionEnabled": false,
       "eventDetectionEnabled": false
     },
+    "LocalDatabase": {
+      "host": "localhost",
+      "port": 5432,
+      "user": "postgres",
+      "database": "postgres",
+      "schema": "postgresql"
+    },
+    "RemoteDatabase": {
+      "host": "localhost",
+      "port": 5432,
+      "user": "postgres",
+      "database": "postgres",
+      "schema": "postgresql"
+    },
     "serviceConfigurations": [
       {
         "name": "OpenAI",
-        "model": "text-davinci-003",
-        "maxTokens": 100
+        "models": [
+          {
+            "identifier": "text-davinci-003",
+            "maxTokens": 100, 
+            "samplesPerRequest": 5
+          },
+          {
+            "identifier": "gpt-3.5", 
+            "maxTokens": 100, 
+            "samplesPerRequest": 5
+          },
+          {
+            "identifier": "claude-3-haiku",
+            "maxTokens": 100,
+            "samplesPerRequest": 5
+          }
+        ]
       },
       {
         "name": "HuggingFace",
@@ -30,18 +59,17 @@
       },
       {
         "name": "Notion",
-        "databaseId": "placeholder_database_id"
+        "databaseId": "14dc4904796e43438151e168b39648ff"
+      },
+      {
+        "name": "Supabase",
+        "host": "",
+        "port": 5432,
+        "user": "postgres",
+        "password": "password",
+        "database": "postgres",
+        "schema": "postgresql"
       }
-    ],
-    "projectMetadata": {
-      "tags": ["data_preparation", "LLM", "utility"],
-      "website": "https://example.com/",
-      "details": {
-        "name": "Large Language Model Data Preparation Utility",
-        "version": "2.0.0",
-        "licenseType": "Apache-2.0",
-        "sourceCode": "https://github.com/your-repository/large-language-model-data-prep.git"
-      }
-    }
+    ]
   }
 }
